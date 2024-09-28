@@ -1,0 +1,19 @@
+from flask import Flask, render_template, request, jsonify
+import requests
+app = Flask(__name__)
+def get_route(start, end):
+    api_key = 'YOUR_API_KEY'
+    url = f'https://maps.googleapis.com/maps/api/directions/json?origin={start}&destination={end}&key={api_key}'
+    response = requests.get(url)
+    return response.json()
+@app.route('/')
+def home():
+    return render_template('index.html')
+def route():
+    data = request.json
+    start = data.get('start')
+    end = data.get('end')
+    route_data = get_route(start, end)
+    return jsonify(route_data)
+if __name__ == '__main__':
+    app.run(debug=True)
