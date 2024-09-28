@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Routing Example</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 600px; }
+    </style>
+</head>
+<body>
+    <input type="text" id="destination" placeholder="Enter destination">
+    <button id="getRoute">Get Shortest Route</button>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([6.751977,125.353731], 13); // Default view
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        var userLocation; // Variable to store user's location
+
+        // Function to get user's current location
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    userLocation = [position.coords.latitude, position.coords.longitude];
+                    map.setView(userLocation, 13); // Set map view to user location
+                    L.marker(userLocation).addTo(map).bindPopup('You are here').openPopup();
+                }, function() {
+                    alert("Geolocation service failed.");
+                }, {
+                    enableHighAccuracy: true, // Request higher accuracy
+                    maximumAge: 0, // Do not cache the location
+                    timeout: 5000 // Timeout after 5 seconds
+                });
+            } else {
+                alert("Your browser doesn't support geolocation.");
+            }
+        }
+        // Function to create a route based on user location
+        function createRoute(destination) {
+            fetch(`/get_route`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    start: userLocation.join(','),
+                    end: destination
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.routes && data.routes.length > 0) {
+                    var route = data.routes[0].legs[0];
+                    var routeCoords = route.steps.map(step => {
+                        return [step.end_location.lat, step.end_location.lng];
+                    });
+
+                    // Clear existing polylines
+                    if (window.polyline) {
+                        map.removeLayer(window.polyline);
+                    }
+
+                    // Create a polyline for the route
+                    window.polyline = L.polyline(routeCoords, {color: 'blue'}).addTo(map);
+                    map.fitBounds(window.polyline.getBounds()); // Adjust map to fit the route
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        }
+
+        document.getElementById('getRoute').addEventListener('click', function() {
+            var destination = document.getElementById('destination').value;
+            createRoute(destination);
+        });
+
+        // Get user location when the page loads
+        getUserLocation();
+    </script>
+</body>
+</html>
