@@ -3,25 +3,43 @@
 <head>
     <title>Routing Example</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
     <style>
         #map { height: 600px; }
     </style>
 </head>
 <body>
-    <input type="text" id="destination" placeholder="Enter destination">
+    <input type="text" id="destination" placeholder="Enter destination (name)">
     <button id="getRoute">Get Shortest Route</button>
+
+    <h3>Select a Predefined Location</h3>
+    <select id="locationSelect">
+        <option value="">-- Select a Location --</option>
+        <option value="balay_nikirby">Balay ni Kirby</option>
+        <option value="location_2">Cor Jesu College</option>
+        <option value="location_3">Gmall</option>
+    </select>
+    <button id="routeToSelected">Route to Selected Location</button>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
     <script>
-        var map = L.map('map').setView([6.751977,125.353731], 13); // Default view
+        var map = L.map('map').setView([6.751977, 125.353731], 13); // Default view
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19
         }).addTo(map);
 
         var userLocation; // Variable to store user's location
+
+        // Predefined locations with their coordinates
+        const locations = {
+            balay_nikirby: [6.596518, 125.344981],
+            location_2: [6.751635, 125.353540], // Replace with actual coordinates
+            location_3: [6.759306, 125.346363]  // Replace with actual coordinates
+        };
 
         // Function to get user's current location
         function getUserLocation() {
@@ -33,51 +51,72 @@
                 }, function() {
                     alert("Geolocation service failed.");
                 }, {
-                    enableHighAccuracy: true, // Request higher accuracy
-                    maximumAge: 0, // Do not cache the location
-                    timeout: 5000 // Timeout after 5 seconds
+                    enableHighAccuracy: true,
+                    maximumAge: 0,
+                    timeout: 5000
                 });
             } else {
                 alert("Your browser doesn't support geolocation.");
             }
         }
-        // Function to create a route based on user location
-        function createRoute(destination) {
-            fetch(`/get_route`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    start: userLocation.join(','),
-                    end: destination
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.routes && data.routes.length > 0) {
-                    var route = data.routes[0].legs[0];
-                    var routeCoords = route.steps.map(step => {
-                        return [step.end_location.lat, step.end_location.lng];
-                    });
 
-                    // Clear existing polylines
-                    if (window.polyline) {
-                        map.removeLayer(window.polyline);
-                    }
+        // Function to create a route based on user location and destination
+        function createRoute(destinationCoords) {
+            if (!userLocation) {
+                alert("User location not available.");
+                return;
+            }
 
-                    // Create a polyline for the route
-                    window.polyline = L.polyline(routeCoords, {color: 'blue'}).addTo(map);
-                    map.fitBounds(window.polyline.getBounds()); // Adjust map to fit the route
-                }
-            })
-            .catch(error => console.error('Error:', error));
+            var routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(userLocation[0], userLocation[1]),
+                    L.latLng(destinationCoords[0], destinationCoords[1])
+                ],
+                routeWhileDragging: true // Optional: allows dragging of the route
+            });
+
+            // Remove existing routing control if it exists
+            if (window.routingControl) {
+                map.removeControl(window.routingControl);
+            }
+
+            // Add the new routing control to the map
+            window.routingControl = routingControl.addTo(map);
         }
+
+        // Event listener for routing to the selected location
+        document.getElementById('routeToSelected').addEventListener('click', function() {
+            var selectedLocation = document.getElementById('locationSelect').value;
+            if (selectedLocation && locations[selectedLocation]) {
+                createRoute(locations[selectedLocation]);
+            } else {
+                alert("Please select a valid location.");
+            }
+        });
 
         document.getElementById('getRoute').addEventListener('click', function() {
             var destination = document.getElementById('destination').value;
-            createRoute(destination);
+            getCoordinatesFromPlaceName(destination)
+                .then(coords => {
+                    createRoute(coords);
+                })
+                .catch(error => {
+                    alert(error.message);
+                });
         });
+
+        // Reverse geocoding function to get coordinates from a place name
+        function getCoordinatesFromPlaceName(placeName) {
+            return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        return [data[0].lat, data[0].lon]; // Return the first result's coordinates
+                    } else {
+                        throw new Error('Place not found');
+                    }
+                });
+        }
 
         // Get user location when the page loads
         getUserLocation();
