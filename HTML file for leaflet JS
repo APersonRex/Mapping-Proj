@@ -4,46 +4,120 @@
     <title>Routing Example</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <!-- Include Select2 Stylesheet -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
     <style>
-        #map { height: 600px; }
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Make map responsive */
+        #map {
+            height: 100%; /* Fill entire height of the viewport */
+            width: 100%; /* Fill the entire width of the viewport */
+        }
+
+        #controls {
+            position: absolute;
+            top: 500px;
+            left: 600px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            width: 300px; /* Fixed width for larger screens */
+        }
+
+        #locationBox {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        #locationBox h3 {
+            margin-top: 0;
+        }
+
+        #controls select,
+        #controls button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        #controls button {
+            background-color: #FF0000;
+            color: white;
+            cursor: pointer;
+        }
+
+        #controls button:hover {
+            background-color: #a50808;
+        }
+
+        /* Make controls responsive for mobile */
+        @media (max-width: 768px) {
+            #controls {
+                width: 90%; /* Make controls smaller on mobile */
+                left: 5%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #controls select,
+            #controls button {
+                font-size: 14px;
+                padding: 8px;
+            }
+        }
     </style>
 </head>
 <body>
-    <input type="text" id="destination" placeholder="Enter destination (name)">
-    <button id="getRoute">Get Shortest Route</button>
-
-    <h3>Select a Predefined Location</h3>
-    <select id="locationSelect">
-        <option value="">-- Select a Location --</option>
-        <option value="balay_nikirby">Balay ni Kirby</option>
-        <option value="location_2">Cor Jesu College</option>
-        <option value="location_3">Gmall</option>
-    </select>
-    <button id="routeToSelected">Route to Selected Location</button>
+    <div id="controls">
+        <!-- Predefined Locations Box -->
+        <div id="locationBox">
+            <h3>Select a Predefined Location</h3>
+            <select id="locationSelect">
+                <option value="">-- Select a Location --</option>
+                <option value="balay_nikirby">Balay ni Kirby</option>
+                <option value="location_2">Balay ni Sir Jez</option>
+                <option value="location_3">Balay nako</option>
+            </select>
+            <button id="routeToSelected">Route to Selected Location</button>
+        </div>
+    </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <!-- Include Select2 Script -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
     <script>
         var map = L.map('map').setView([6.751977, 125.353731], 13); // Default view
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19
         }).addTo(map);
 
-        var userLocation; // Variable to store user's location
-        var userMarker; // Variable to store user's marker
+        var userLocation;
+        var userMarker;
 
         const locations = {
             balay_nikirby: [6.596518, 125.344981],
             location_2: [6.751635, 125.353540],
             location_3: [6.759306, 125.346363]
         };
-
-        // Adding an image overlay
-        var imageUrl = 'https://media.discordapp.net/attachments/724585383718813758/1301518848595591208/jpg_2.jpg?ex=6724c562&is=672373e2&hm=cb0fe8762e05741d1b19a7044fb187f2c6d722d6e9667ad07bc004b7152b5e92&=&format=webp&width=458&height=593'; // Replace with your direct image URL
-        var imageBounds = [[6.753197, 125.353313], [6.751171, 125.354014]]; // Define the bounds
-        L.imageOverlay(imageUrl, imageBounds).addTo(map);
 
         function getUserLocation() {
             if (navigator.geolocation) {
@@ -57,10 +131,6 @@
                     map.setView(userLocation, 13);
                 }, function() {
                     alert("Geolocation service failed.");
-                }, {
-                    enableHighAccuracy: true,
-                    maximumAge: 0,
-                    timeout: 5000
                 });
             } else {
                 alert("Your browser doesn't support geolocation.");
@@ -79,8 +149,8 @@
                     L.latLng(destinationCoords[0], destinationCoords[1])
                 ],
                 routeWhileDragging: true,
-                draggableWaypoints: false, // Disable dragging of waypoints
-                addWaypoints: false // Prevent adding new waypoints
+                draggableWaypoints: false,
+                addWaypoints: false
             });
 
             if (window.routingControl) {
@@ -99,33 +169,14 @@
             }
         });
 
-        document.getElementById('getRoute').addEventListener('click', function() {
-            var destination = document.getElementById('destination').value;
-            getCoordinatesFromPlaceName(destination)
-                .then(coords => {
-                    createRoute(coords);
-                })
-                .catch(error => {
-                    alert(error.message);
-                });
+        // Initialize Select2 for the location dropdown after the DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            $('#locationSelect').select2({
+                placeholder: "Search for a location"
+            });
         });
 
-        function getCoordinatesFromPlaceName(placeName) {
-            return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(placeName)}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.length > 0) {
-                        return [data[0].lat, data[0].lon];
-                    } else {
-                        throw new Error('Place not found');
-                    }
-                });
-        }
-
-        // Update the user's location every few seconds
-        setInterval(getUserLocation, 50000); // Update every 5 seconds
-
-        // Get user location when the page loads
+        setInterval(getUserLocation, 50000);
         getUserLocation();
     </script>
 </body>
