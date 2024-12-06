@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Routing Example</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <!-- Include Select2 Stylesheet -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Make map responsive */
+        #map {
+            height: 100%; /* Fill entire height of the viewport */
+            width: 100%; /* Fill the entire width of the viewport */
+        }
+
+        #controls {
+            position: absolute;
+            top: 300px;
+            left: 400px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            width: 300px; /* Fixed width for larger screens */
+        }
+
+        #locationBox {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        #locationBox h3 {
+            margin-top: 0;
+        }
+
+        #controls select,
+        #controls button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        #controls button {
+            background-color: #FF0000;
+            color: white;
+            cursor: pointer;
+        }
+
+        #controls button:hover {
+            background-color: #a50808;
+        }
+
+        /* Make controls responsive for mobile */
+        @media (max-width: 768px) {
+            #controls {
+                width: 90%; /* Make controls smaller on mobile */
+                left: 5%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #controls select,
+            #controls button {
+                font-size: 14px;
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <!-- Predefined Locations Box -->
+        <div id="locationBox">
+            <h3>Select a Predefined Location</h3>
+            <select id="locationSelect">
+                <option value="">-- Select a Location --</option>
+                <option value="Raymond rooms"disabled>Raymond</option>
+                <option value="R101">R101</option>
+                <option value="R102">R102</option>
+                <option value="R103">R103</option>
+                <option value="R104">R104</option>
+                <option value="R105">R105</option>
+                <option value="R106">R106</option>
+                <option value="R107">R107</option>
+                <option value="R108">R108</option>
+                <option value="R109">R109</option>
+                <option value="R110">R110</option>
+                <option value="R111">R111</option>
+                <option value="R112">R112</option>
+                <option value="R113">R113</option>
+                <option value="R114">R114</option>
+                <option value="R115">R115</option>
+                <option value="R116">R116</option>
+                <option value="R117">R117</option>
+                <option value="R118">R118</option>
+                <option value="R119">R119</option>
+                <option value="R120">R120</option>
+                <option value="R121">R121</option>
+                <option value="R122">R122</option>
+                <option value="R123">R123</option>
+                <option value="R124">R124</option>
+                <option value="R125">R125</option>
+                <option value="R126">R126</option>
+                
+            </select>
+            <button id="routeToSelected">Route to Selected Location</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <!-- Include Select2 Script -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
+    <script>
+        var map = L.map('map').setView([6.751977, 125.353731], 18); // Default view
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        var userLocation;
+        var userMarker;
+
+        const locations = {
+            R101: [6.596518, 125.344981],
+            R102: [6.751635, 125.353540],
+            R103: [6.759306, 125.346363],
+            R104: [6.596518, 125.344981],
+            R105: [6.751635, 125.353540],
+            R106: [6.759306, 125.346363],
+            R107: [6.596518, 125.344981],
+            R108: [6.751635, 125.353540],
+            R109: [6.759306, 125.346363],
+            R110: [6.596518, 125.344981],
+            R111: [6.751635, 125.353540],
+            R112: [6.759306, 125.346363],
+            R113: [6.596518, 125.344981],
+            R114: [6.751635, 125.353540],
+            R115: [6.759306, 125.346363],
+            R116: [6.596518, 125.344981],
+            R117: [6.751635, 125.353540],
+            R118: [6.759306, 125.346363],
+            R119: [6.596518, 125.344981],
+            R120: [6.751635, 125.353540],
+            R121: [6.759306, 125.346363],
+            R122: [6.596518, 125.344981],
+            R123: [6.751635, 125.353540],
+            R124: [6.759306, 125.346363],
+            R125: [6.596518, 125.344981],
+            R126: [6.751635, 125.353540]
+        };
+
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    userLocation = [position.coords.latitude, position.coords.longitude];
+                    if (!userMarker) {
+                        userMarker = L.marker(userLocation).addTo(map).bindPopup('You are here').openPopup();
+                    } else {
+                        userMarker.setLatLng(userLocation);
+                    }
+                    map.setView(userLocation, 13);
+                }, function() {
+                    alert("Geolocation service failed.");
+                });
+            } else {
+                alert("Your browser doesn't support geolocation.");
+            }
+        }
+
+        function createRoute(destinationCoords) {
+            if (!userLocation) {
+                alert("User location not available.");
+                return;
+            }
+
+            var routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(userLocation[0], userLocation[1]),
+                    L.latLng(destinationCoords[0], destinationCoords[1])
+                ],
+                routeWhileDragging: true,
+                draggableWaypoints: false,
+                addWaypoints: false
+            });
+
+            if (window.routingControl) {
+                map.removeControl(window.routingControl);
+            }
+
+            window.routingControl = routingControl.addTo(map);
+        }
+
+        document.getElementById('routeToSelected').addEventListener('click', function() {
+            var selectedLocation = document.getElementById('locationSelect').value;
+            if (selectedLocation && locations[selectedLocation]) {
+                createRoute(locations[selectedLocation]);
+            } else {
+                alert("Please select a valid location.");
+            }
+        });
+
+        // Initialize Select2 for the location dropdown after the DOM is ready
+        document.addEventListener('DOMContentLoaded', function () {
+            $('#locationSelect').select2({
+                placeholder: "Search for a location"
+            });
+        });
+
+        setInterval(getUserLocation, 50000);
+        getUserLocation();
+    </script>
+</body>
+</html>
