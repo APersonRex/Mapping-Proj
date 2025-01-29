@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SACRESYNC TANGINA</title> 
+    <title>Routing Example</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
     <!-- Include Select2 Stylesheet -->
@@ -133,7 +133,7 @@
     
         function getUserLocation() {
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
+                navigator.geolocation.watchPosition(
                     function (position) {
                         userLocation = [position.coords.latitude, position.coords.longitude];
                         if (!userMarker) {
@@ -164,22 +164,6 @@
                 alert("Your browser does not support geolocation.");
             }
         }
-
-        // Automatically move the location every few seconds (simulation of movement)
-        function simulateUserMovement() {
-            if (userLocation) {
-                // Simulate the user moving - moving slightly in lat/lng every 2 seconds
-                userLocation[0] += 0.00001; // Change latitude
-                userLocation[1] += 0.00001; // Change longitude
-                
-                // Update the marker position
-                userMarker.setLatLng(userLocation);
-                map.setView(userLocation, 18);
-            }
-        }
-
-        // Simulate movement every 2 seconds
-        setInterval(simulateUserMovement, 2000);
 
         document.getElementById('routeToSelected').addEventListener('click', function () {
             var selectedLocation = document.getElementById('locationSelect').value;
@@ -248,7 +232,6 @@
             window.routingControl = routingControl.addTo(map);
         }
 
-        setInterval(getUserLocation, 10000);  // Update the user location every 10 seconds
         getUserLocation();  // Call to set the initial location
     </script>
 </body>
