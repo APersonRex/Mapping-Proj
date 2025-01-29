@@ -16,20 +16,20 @@
 
         /* Make map responsive */
         #map {
-            height: 100%; /* Fill entire height of the viewport */
-            width: 100%; /* Fill the entire width of the viewport */
+            height: 100%;
+            width: 100%;
         }
 
         #controls {
             position: absolute;
-            top: 500px;
-            left: 600px;
+            top: 300px;
+            left: 400px;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
             padding: 20px;
             z-index: 1000;
-            width: 300px; /* Fixed width for larger screens */
+            width: 300px;
         }
 
         #locationBox {
@@ -65,10 +65,9 @@
             background-color: #a50808;
         }
 
-        /* Make controls responsive for mobile */
         @media (max-width: 768px) {
             #controls {
-                width: 90%; /* Make controls smaller on mobile */
+                width: 90%;
                 left: 5%;
             }
         }
@@ -84,14 +83,16 @@
 </head>
 <body>
     <div id="controls">
-        <!-- Predefined Locations Box -->
         <div id="locationBox">
             <h3>Select a Predefined Location</h3>
             <select id="locationSelect">
                 <option value="">-- Select a Location --</option>
-                <option value="balay_nikirby">Balay ni Kirby</option>
-                <option value="location_2">Balay ni Sir Jez</option>
-                <option value="location_3">Balay nako</option>
+                <option value="Raymond rooms" disabled>Raymond</option>
+                <option value="R101">R101</option>
+                <option value="R102">R102</option>
+                <option value="R103">R103</option>
+                <option value="customRoute1">Custom Route 1</option>
+                <option value="customRoute2">Custom Route 2</option>
             </select>
             <button id="routeToSelected">Route to Selected Location</button>
         </div>
@@ -105,49 +106,136 @@
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 
     <script>
-        var map = L.map('map').setView([6.751977, 125.353731], 13); // Default view
+        var map = L.map('map').setView([6.751977, 125.353731], 18); // Default view
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19
         }).addTo(map);
-
+    
         var userLocation;
         var userMarker;
-
+    
         const locations = {
-            balay_nikirby: [6.596518, 125.344981],
-            location_2: [6.751635, 125.353540],
-            location_3: [6.759306, 125.346363]
+            R101: [6.596518, 125.344981],
+            R102: [6.751635, 125.353540],
+            R103: [6.759306, 125.346363],
+            // Custom Routes
+            customRoute1: [
+                [6.751635, 125.353540], // Starting point
+                [6.759306, 125.346363], // Waypoint
+                [6.765739, 125.344981]  // Ending point
+            ],
+            customRoute2: [
+                [6.759306, 125.346363],
+                [6.754832, 125.350214],
+                [6.748951, 125.342816]
+            ]
         };
-
+    
         function getUserLocation() {
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    userLocation = [position.coords.latitude, position.coords.longitude];
-                    if (!userMarker) {
-                        userMarker = L.marker(userLocation).addTo(map).bindPopup('You are here').openPopup();
-                    } else {
-                        userMarker.setLatLng(userLocation);
+                navigator.geolocation.getCurrentPosition(
+                    function (position) {
+                        userLocation = [position.coords.latitude, position.coords.longitude];
+                        if (!userMarker) {
+                            userMarker = L.marker(userLocation, { draggable: true }).addTo(map)
+                                .bindPopup('You are here')
+                                .openPopup();
+
+                            // Listen for marker drag events to update user location
+                            userMarker.on('dragend', function (event) {
+                                var newLatLng = event.target.getLatLng();
+                                userLocation = [newLatLng.lat, newLatLng.lng];
+                            });
+                        } else {
+                            userMarker.setLatLng(userLocation);
+                        }
+                        map.setView(userLocation, 18);
+                    },
+                    function (error) {
+                        alert("Error retrieving your location: " + error.message);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,  // Timeout after 10 seconds
+                        maximumAge: 0  // Don't use cached location
                     }
-                    map.setView(userLocation, 13);
-                }, function() {
-                    alert("Geolocation service failed.");
-                });
+                );
             } else {
-                alert("Your browser doesn't support geolocation.");
+                alert("Your browser does not support geolocation.");
             }
         }
 
+        // Automatically move the location every few seconds (simulation of movement)
+        function simulateUserMovement() {
+            if (userLocation) {
+                // Simulate the user moving - moving slightly in lat/lng every 2 seconds
+                userLocation[0] += 0.00001; // Change latitude
+                userLocation[1] += 0.00001; // Change longitude
+                
+                // Update the marker position
+                userMarker.setLatLng(userLocation);
+                map.setView(userLocation, 18);
+            }
+        }
+
+        // Simulate movement every 2 seconds
+        setInterval(simulateUserMovement, 2000);
+
+        document.getElementById('routeToSelected').addEventListener('click', function () {
+            var selectedLocation = document.getElementById('locationSelect').value;
+            
+            if (selectedLocation && locations[selectedLocation]) {
+                if (Array.isArray(locations[selectedLocation][0])) {
+                    // Handle the custom route with multiple waypoints
+                    createCustomRoute(locations[selectedLocation]);
+                } else {
+                    // Handle regular single destination routes
+                    createRoute(locations[selectedLocation]);
+                }
+            } else {
+                alert("Please select a valid location.");
+            }
+        });
+    
         function createRoute(destinationCoords) {
             if (!userLocation) {
                 alert("User location not available.");
                 return;
             }
-
+    
             var routingControl = L.Routing.control({
                 waypoints: [
                     L.latLng(userLocation[0], userLocation[1]),
                     L.latLng(destinationCoords[0], destinationCoords[1])
                 ],
+                routeWhileDragging: true,
+                draggableWaypoints: false,
+                addWaypoints: false
+            });
+    
+            if (window.routingControl) {
+                map.removeControl(window.routingControl);
+            }
+    
+            window.routingControl = routingControl.addTo(map);
+        }
+    
+        function createCustomRoute(routeCoordinates) {
+            if (!userLocation) {
+                alert("User location not available.");
+                return;
+            }
+
+            // Add the user's location as the starting point
+            var waypoints = [L.latLng(userLocation[0], userLocation[1])];
+
+            // Add the custom route's waypoints
+            routeCoordinates.forEach(coord => {
+                waypoints.push(L.latLng(coord[0], coord[1]));
+            });
+
+            var routingControl = L.Routing.control({
+                waypoints: waypoints,
                 routeWhileDragging: true,
                 draggableWaypoints: false,
                 addWaypoints: false
@@ -160,24 +248,8 @@
             window.routingControl = routingControl.addTo(map);
         }
 
-        document.getElementById('routeToSelected').addEventListener('click', function() {
-            var selectedLocation = document.getElementById('locationSelect').value;
-            if (selectedLocation && locations[selectedLocation]) {
-                createRoute(locations[selectedLocation]);
-            } else {
-                alert("Please select a valid location.");
-            }
-        });
-
-        // Initialize Select2 for the location dropdown after the DOM is ready
-        document.addEventListener('DOMContentLoaded', function () {
-            $('#locationSelect').select2({
-                placeholder: "Search for a location"
-            });
-        });
-
-        setInterval(getUserLocation, 50000);
-        getUserLocation();
+        setInterval(getUserLocation, 10000);  // Update the user location every 10 seconds
+        getUserLocation();  // Call to set the initial location
     </script>
 </body>
 </html>
