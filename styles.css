@@ -1,0 +1,72 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: Arial, sans-serif;
+}
+
+/* Make map responsive */
+#map {
+    height: 100%;
+    width: 100%;
+}
+
+#controls {
+    position: absolute;
+    top: 300px;
+    left: 400px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    padding: 20px;
+    z-index: 1000;
+    width: 300px;
+}
+
+#locationBox {
+    margin-bottom: 20px;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    background-color: #f9f9f9;
+}
+
+#locationBox h3 {
+    margin-top: 0;
+}
+
+#controls select,
+#controls button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+
+#controls button {
+    background-color: #FF0000;
+    color: white;
+    cursor: pointer;
+}
+
+#controls button:hover {
+    background-color: #a50808;
+}
+
+@media (max-width: 768px) {
+    #controls {
+        width: 90%;
+        left: 5%;
+    }
+}
+
+@media (max-width: 480px) {
+    #controls select,
+    #controls button {
+        font-size: 14px;
+        padding: 8px;
+    }
+}
