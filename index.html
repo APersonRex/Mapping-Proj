@@ -1,13 +1,85 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Routing Example</title>
-    <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <!-- Include Select2 Stylesheet -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Make map responsive */
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 300px;
+            left: 400px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            width: 300px;
+        }
+
+        #locationBox {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        #locationBox h3 {
+            margin-top: 0;
+        }
+
+        #controls select,
+        #controls button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        #controls button {
+            background-color: #FF0000;
+            color: white;
+            cursor: pointer;
+        }
+
+        #controls button:hover {
+            background-color: #a50808;
+        }
+
+        @media (max-width: 768px) {
+            #controls {
+                width: 90%;
+                left: 5%;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #controls select,
+            #controls button {
+                font-size: 14px;
+                padding: 8px;
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="controls">
@@ -30,7 +102,137 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <!-- Include Select2 Script -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
-    <script src="script.js"></script>
+
+    <script>
+        var map = L.map('map').setView([6.751977, 125.353731], 18); // Default view
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+    
+        var userLocation;
+        var userMarker;
+    
+        const locations = {
+            R101: [6.596518, 125.344981],
+            R102: [6.751635, 125.353540],
+            R103: [6.759306, 125.346363],
+            // Custom Routes
+            customRoute1: [
+                [6.751635, 125.353540], // Starting point
+                [6.759306, 125.346363], // Waypoint
+                [6.765739, 125.344981]  // Ending point
+            ],
+            customRoute2: [
+                [6.759306, 125.346363],
+                [6.754832, 125.350214],
+                [6.748951, 125.342816]
+            ]
+        };
+    
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    function (position) {
+                        userLocation = [position.coords.latitude, position.coords.longitude];
+                        if (!userMarker) {
+                            userMarker = L.marker(userLocation, { draggable: true }).addTo(map)
+                                .bindPopup('You are here')
+                                .openPopup();
+
+                            // Listen for marker drag events to update user location
+                            userMarker.on('dragend', function (event) {
+                                var newLatLng = event.target.getLatLng();
+                                userLocation = [newLatLng.lat, newLatLng.lng];
+                            });
+                        } else {
+                            userMarker.setLatLng(userLocation);
+                        }
+                        map.setView(userLocation, 18);
+                    },
+                    function (error) {
+                        alert("Error retrieving your location: " + error.message);
+                    },
+                    {
+                        enableHighAccuracy: true,
+                        timeout: 10000,  // Timeout after 10 seconds
+                        maximumAge: 0  // Don't use cached location
+                    }
+                );
+            } else {
+                alert("Your browser does not support geolocation.");
+            }
+        }
+
+        document.getElementById('routeToSelected').addEventListener('click', function () {
+            var selectedLocation = document.getElementById('locationSelect').value;
+            
+            if (selectedLocation && locations[selectedLocation]) {
+                if (Array.isArray(locations[selectedLocation][0])) {
+                    // Handle the custom route with multiple waypoints
+                    createCustomRoute(locations[selectedLocation]);
+                } else {
+                    // Handle regular single destination routes
+                    createRoute(locations[selectedLocation]);
+                }
+            } else {
+                alert("Please select a valid location.");
+            }
+        });
+    
+        function createRoute(destinationCoords) {
+            if (!userLocation) {
+                alert("User location not available.");
+                return;
+            }
+    
+            var routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(userLocation[0], userLocation[1]),
+                    L.latLng(destinationCoords[0], destinationCoords[1])
+                ],
+                routeWhileDragging: true,
+                draggableWaypoints: false,
+                addWaypoints: false
+            });
+    
+            if (window.routingControl) {
+                map.removeControl(window.routingControl);
+            }
+    
+            window.routingControl = routingControl.addTo(map);
+        }
+    
+        function createCustomRoute(routeCoordinates) {
+            if (!userLocation) {
+                alert("User location not available.");
+                return;
+            }
+
+            // Add the user's location as the starting point
+            var waypoints = [L.latLng(userLocation[0], userLocation[1])];
+
+            // Add the custom route's waypoints
+            routeCoordinates.forEach(coord => {
+                waypoints.push(L.latLng(coord[0], coord[1]));
+            });
+
+            var routingControl = L.Routing.control({
+                waypoints: waypoints,
+                routeWhileDragging: true,
+                draggableWaypoints: false,
+                addWaypoints: false
+            });
+
+            if (window.routingControl) {
+                map.removeControl(window.routingControl);
+            }
+
+            window.routingControl = routingControl.addTo(map);
+        }
+
+        getUserLocation();  // Call to set the initial location
+    </script>
 </body>
 </html>
