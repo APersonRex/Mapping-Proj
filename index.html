@@ -114,13 +114,16 @@
                 [6.748951, 125.342816]
             ]
         };
-        
-        // Add the GeoTIFF image overlay using leaflet-geotiff plugin
-        var geoTiffLayer = L.GeoTIFF('https://apersonrex.github.io/geotiff-hosting/new1.tif', {
+
+        // Use leaflet-geotiff to add the GeoTIFF as a layer
+        var geoTiffUrl = 'https://apersonrex.github.io/geotiff-hosting/new1.tif';
+
+        var geoTiffLayer = L.GeoTIFF(geoTiffUrl, {
             opacity: 0.7,
             band: 0  // Use the first band of the GeoTIFF image
         }).addTo(map);
 
+        // Function to get user location
         function getUserLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(
@@ -154,6 +157,7 @@
             }
         }
 
+        // Event listener for routing to the selected location
         document.getElementById('routeToSelected').addEventListener('click', function () {
             var selectedLocation = document.getElementById('locationSelect').value;
 
@@ -168,6 +172,7 @@
             }
         });
 
+        // Function to create a route to a destination
         function createRoute(destinationCoords) {
             if (!userLocation) {
                 alert("User location not available.");
@@ -191,6 +196,7 @@
             window.routingControl = routingControl.addTo(map);
         }
 
+        // Function to create a custom route
         function createCustomRoute(routeCoordinates) {
             if (!userLocation) {
                 alert("User location not available.");
