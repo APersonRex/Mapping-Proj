@@ -114,6 +114,19 @@
                 [6.748951, 125.342816]
             ]
         };
+        
+        fetch('https://apersonrex.github.io/geotiff-hosting/new1.tif')  // Replace with your GeoTIFF URL
+            .then(response => response.arrayBuffer())
+            .then(buffer => {
+                const tiff = GeoTIFF.parse(buffer);
+                const image = tiff.getImage();
+                const data = image.readRasters();
+                const bounds = image.getBoundingBox();
+
+                // Create a Leaflet image overlay from the GeoTIFF
+                L.imageOverlay(data[0], bounds).addTo(map);
+            })
+            .catch(error => console.error('Error loading GeoTIFF:', error));
 
         function getUserLocation() {
             if (navigator.geolocation) {
