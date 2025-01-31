@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Routing Example</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routing Example with GeoTIFF</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
-    <!-- Include Select2 Stylesheet -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
     <style>
         body, html {
@@ -14,7 +15,6 @@
             font-family: Arial, sans-serif;
         }
 
-        /* Make map responsive */
         #map {
             height: 100%;
             width: 100%;
@@ -22,8 +22,8 @@
 
         #controls {
             position: absolute;
-            top: 300px;
-            left: 400px;
+            top: 50px;
+            left: 20px;
             background: rgba(255, 255, 255, 0.9);
             border-radius: 8px;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
@@ -64,21 +64,6 @@
         #controls button:hover {
             background-color: #a50808;
         }
-
-        @media (max-width: 768px) {
-            #controls {
-                width: 90%;
-                left: 5%;
-            }
-        }
-
-        @media (max-width: 480px) {
-            #controls select,
-            #controls button {
-                font-size: 14px;
-                padding: 8px;
-            }
-        }
     </style>
 </head>
 <body>
@@ -102,23 +87,22 @@
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
-    <!-- Include Select2 Script -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+    <script src="https://unpkg.com/leaflet-geotiff@1.0.0/dist/leaflet-geotiff.min.js"></script>
 
     <script>
         var map = L.map('map').setView([6.751977, 125.353731], 18); // Default view
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19
         }).addTo(map);
-    
+
         var userLocation;
         var userMarker;
-    
+
         const locations = {
             R101: [6.596518, 125.344981],
             R102: [6.751635, 125.353540],
             R103: [6.759306, 125.346363],
-            // Custom Routes
             customRoute1: [
                 [6.751635, 125.353540], // Starting point
                 [6.759306, 125.346363], // Waypoint
@@ -130,7 +114,7 @@
                 [6.748951, 125.342816]
             ]
         };
-    
+
         function getUserLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(
@@ -141,7 +125,6 @@
                                 .bindPopup('You are here')
                                 .openPopup();
 
-                            // Listen for marker drag events to update user location
                             userMarker.on('dragend', function (event) {
                                 var newLatLng = event.target.getLatLng();
                                 userLocation = [newLatLng.lat, newLatLng.lng];
@@ -156,8 +139,8 @@
                     },
                     {
                         enableHighAccuracy: true,
-                        timeout: 10000,  // Timeout after 10 seconds
-                        maximumAge: 0  // Don't use cached location
+                        timeout: 10000,
+                        maximumAge: 0
                     }
                 );
             } else {
@@ -165,28 +148,35 @@
             }
         }
 
+        // Example: You can use the URL of your GeoTIFF here
+        var geoTiffUrl = 'https://apersonrex.github.io/geotiff-hosting/new1.tif'; // Replace with your GeoTIFF URL
+
+        // Use the leaflet-geotiff plugin to add the GeoTIFF image
+        var geoTiffLayer = L.GeoTIFF(geoTiffUrl, {
+            band: 0,  // Default to the first band if the GeoTIFF has multiple bands
+            opacity: 0.7
+        }).addTo(map);
+
         document.getElementById('routeToSelected').addEventListener('click', function () {
             var selectedLocation = document.getElementById('locationSelect').value;
-            
+
             if (selectedLocation && locations[selectedLocation]) {
                 if (Array.isArray(locations[selectedLocation][0])) {
-                    // Handle the custom route with multiple waypoints
                     createCustomRoute(locations[selectedLocation]);
                 } else {
-                    // Handle regular single destination routes
                     createRoute(locations[selectedLocation]);
                 }
             } else {
                 alert("Please select a valid location.");
             }
         });
-    
+
         function createRoute(destinationCoords) {
             if (!userLocation) {
                 alert("User location not available.");
                 return;
             }
-    
+
             var routingControl = L.Routing.control({
                 waypoints: [
                     L.latLng(userLocation[0], userLocation[1]),
@@ -196,24 +186,22 @@
                 draggableWaypoints: false,
                 addWaypoints: false
             });
-    
+
             if (window.routingControl) {
                 map.removeControl(window.routingControl);
             }
-    
+
             window.routingControl = routingControl.addTo(map);
         }
-    
+
         function createCustomRoute(routeCoordinates) {
             if (!userLocation) {
                 alert("User location not available.");
                 return;
             }
 
-            // Add the user's location as the starting point
             var waypoints = [L.latLng(userLocation[0], userLocation[1])];
 
-            // Add the custom route's waypoints
             routeCoordinates.forEach(coord => {
                 waypoints.push(L.latLng(coord[0], coord[1]));
             });
