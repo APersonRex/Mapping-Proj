@@ -115,18 +115,11 @@
             ]
         };
         
-        fetch('https://apersonrex.github.io/geotiff-hosting/new1.tif')  // Replace with your GeoTIFF URL
-            .then(response => response.arrayBuffer())
-            .then(buffer => {
-                const tiff = GeoTIFF.parse(buffer);
-                const image = tiff.getImage();
-                const data = image.readRasters();
-                const bounds = image.getBoundingBox();
-
-                // Create a Leaflet image overlay from the GeoTIFF
-                L.imageOverlay(data[0], bounds).addTo(map);
-            })
-            .catch(error => console.error('Error loading GeoTIFF:', error));
+        // Add the GeoTIFF image overlay using leaflet-geotiff plugin
+        var geoTiffLayer = L.GeoTIFF('https://apersonrex.github.io/geotiff-hosting/new1.tif', {
+            opacity: 0.7,
+            band: 0  // Use the first band of the GeoTIFF image
+        }).addTo(map);
 
         function getUserLocation() {
             if (navigator.geolocation) {
@@ -160,15 +153,6 @@
                 alert("Your browser does not support geolocation.");
             }
         }
-
-        // Example: You can use the URL of your GeoTIFF here
-        var geoTiffUrl = 'https://apersonrex.github.io/geotiff-hosting/new1.tif'; // Replace with your GeoTIFF URL
-
-        // Use the leaflet-geotiff plugin to add the GeoTIFF image
-        var geoTiffLayer = L.GeoTIFF(geoTiffUrl, {
-            band: 0,  // Default to the first band if the GeoTIFF has multiple bands
-            opacity: 0.7
-        }).addTo(map);
 
         document.getElementById('routeToSelected').addEventListener('click', function () {
             var selectedLocation = document.getElementById('locationSelect').value;
