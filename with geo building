@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routing Example with GeoTIFF</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            width: 300px;
+        }
+
+        #locationBox {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        #locationBox h3 {
+            margin-top: 0;
+        }
+
+        #controls select,
+        #controls button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        #controls button {
+            background-color: #FF0000;
+            color: white;
+            cursor: pointer;
+        }
+
+        #controls button:hover {
+            background-color: #a50808;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <div id="locationBox">
+            <h3>Select a Predefined Location</h3>
+            <select id="locationSelect">
+                <option value="">-- Select a Location --</option>
+                <option value="Raymond rooms" disabled>Raymond</option>
+                <option value="R101">R101</option>
+                <option value="R102">R102</option>
+                <option value="R103">R103</option>
+            </select>
+            <button id="routeToSelected">Route to Selected Location</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+    <script src="https://unpkg.com/leaflet-geotiff@1.0.0/dist/leaflet-geotiff.min.js"></script>
+
+    <script>
+        var map = L.map('map').setView([6.751977, 125.353731], 18); // Default view
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        var userLocation;
+        var userMarker;
+        var routeControl;
+
+        const locations = {
+            R101: [6.596518, 125.344981],
+            R102: [6.751635, 125.353540],
+            R103: [6.759306, 125.346363],
+        };
+
+        // Define your GeoJSON data here
+        var yourGeoJsonData = {
+    "type": "FeatureCollection",
+    "name": "buildings",
+    "crs": {
+        "type": "name",
+        "properties": {
+            "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+        }
+    },
+    "features": [{
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.35346552546946, 6.752944457565506],
+                            [125.353908866302817, 6.752944457565506],
+                            [125.353898475502021, 6.752122399340711],
+                            [125.353392789863975, 6.752125838917783],
+                            [125.353403180664728, 6.752012332861514],
+                            [125.353347763060597, 6.752012332861514],
+                            [125.353326981459006, 6.752834391273285],
+                            [125.353441280267603, 6.752827512129191],
+                            [125.353441280267603, 6.752456038202831],
+                            [125.353763395091846, 6.752459477777531],
+                            [125.353763395091846, 6.75275184153769],
+                            [125.353468989069697, 6.752758720682861],
+                            [125.35346552546946, 6.752944457565506]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353555579076229, 6.751995134971879],
+                            [125.353649096283263, 6.751984816237802],
+                            [125.353656023483779, 6.751943541299301],
+                            [125.353707977487673, 6.751940101720935],
+                            [125.353701050287157, 6.751857551832785],
+                            [125.353656023483779, 6.751857551832785],
+                            [125.353652559883528, 6.751823156041901],
+                            [125.353541724675182, 6.751823156041901],
+                            [125.353555579076229, 6.75186443099067],
+                            [125.353531333874386, 6.751888508042492],
+                            [125.353527870274149, 6.751926343407221],
+                            [125.353552115475978, 6.751936662142544],
+                            [125.353555579076229, 6.751995134971879]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353389326263695, 6.751706210334611],
+                            [125.353829203496815, 6.751692452014247],
+                            [125.353839594297611, 6.751589264599059],
+                            [125.353392789863975, 6.751592704179921],
+                            [125.353389326263695, 6.751706210334611]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353905402702523, 6.751936662142544],
+                            [125.353998919909586, 6.751940101720935],
+                            [125.354002383509865, 6.751664935372347],
+                            [125.353895011901784, 6.751675254113244],
+                            [125.353905402702523, 6.751936662142544]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353915793503333, 6.751520472976714],
+                            [125.353998919909586, 6.751510154232514],
+                            [125.353988529108818, 6.751200591804355],
+                            [125.353642169082747, 6.751207470971575],
+                            [125.353656023483779, 6.751303779302408],
+                            [125.353898475502021, 6.751314098051002],
+                            [125.353915793503333, 6.751520472976714]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353087993041029, 6.751080206362151],
+                            [125.353223073451204, 6.751080206362151],
+                            [125.353223073451204, 6.751032052176888],
+                            [125.353323517858726, 6.750915106278444],
+                            [125.353323517858726, 6.750770643659001],
+                            [125.353198828249347, 6.750657137284906],
+                            [125.353195364649125, 6.750615862233182],
+                            [125.353077602240262, 6.750626180996444],
+                            [125.35308452944075, 6.750664016459853],
+                            [125.352959839831371, 6.750777522832335],
+                            [125.352959839831371, 6.750777522832335],
+                            [125.352970230632167, 6.750932304206457],
+                            [125.353094920241546, 6.751045810516024],
+                            [125.353087993041029, 6.751080206362151]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353198828249347, 6.751451681344589],
+                            [125.353191901048831, 6.751362252208207],
+                            [125.353233464251957, 6.751362252208207],
+                            [125.353240391452516, 6.75125562513939],
+                            [125.352371027787058, 6.751265943889009],
+                            [125.35238834578837, 6.751448241762724],
+                            [125.353198828249347, 6.751451681344589]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.35302218463606, 6.751682133273719],
+                            [125.353133019844435, 6.751689012434094],
+                            [125.353136483444686, 6.751482637580253],
+                            [125.353015257435544, 6.751486077161871],
+                            [125.35302218463606, 6.751682133273719]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353136483444686, 6.751805958145543],
+                            [125.35238834578837, 6.751792199828015],
+                            [125.352384882188105, 6.751692452014247],
+                            [125.353139947044951, 6.751706210334611],
+                            [125.353136483444686, 6.751805958145543]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352364100586541, 6.751795639407434],
+                            [125.352364100586541, 6.751795639407434],
+                            [125.352190920573506, 6.751795639407434],
+                            [125.352187456973255, 6.751668374952673],
+                            [125.352239410977162, 6.751668374952673],
+                            [125.352253265378195, 6.75147919799861],
+                            [125.352201311374287, 6.751455120926426],
+                            [125.352211702175083, 6.751365691790681],
+                            [125.352211702175083, 6.751348493878065],
+                            [125.352360636986276, 6.751351933460637],
+                            [125.352364100586541, 6.751795639407434]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352346782585258, 6.751204031387975],
+                            [125.352838613822257, 6.751200591804355],
+                            [125.352842077422522, 6.751001095912403],
+                            [125.352343318984964, 6.751032052176888],
+                            [125.352346782585258, 6.751204031387975]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352471472194622, 6.750908227107066],
+                            [125.352821295820974, 6.750891029178195],
+                            [125.352810905020178, 6.750777522832335],
+                            [125.352457617793576, 6.750791281178703],
+                            [125.352471472194622, 6.750908227107066]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352319073783164, 6.750915106278444],
+                            [125.352443763392543, 6.750901347935591],
+                            [125.352416054590449, 6.750543630884194],
+                            [125.35228443778054, 6.750564268413577],
+                            [125.352319073783164, 6.750915106278444]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352450690593059, 6.750629620584148],
+                            [125.352450690593059, 6.750629620584148],
+                            [125.352817832220694, 6.750612422645381],
+                            [125.352803977819661, 6.750519553765471],
+                            [125.352426445391245, 6.750540191295879],
+                            [125.352450690593059, 6.750629620584148]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352859395423806, 6.750598664293925],
+                            [125.35326810025461, 6.750591785118051],
+                            [125.35326810025461, 6.750505795411378],
+                            [125.35284900462301, 6.750519553765471],
+                            [125.352859395423806, 6.750598664293925]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352173602572194, 6.751296900136555],
+                            [125.351834169746652, 6.751300339719493],
+                            [125.351806460944559, 6.750536751707539],
+                            [125.352173602572194, 6.750512674588474],
+                            [125.35217706617243, 6.750626180996444],
+                            [125.351945004954999, 6.750650258109864],
+                            [125.351969250156827, 6.751169635550649],
+                            [125.352183993372989, 6.75116619596678],
+                            [125.352173602572194, 6.751296900136555]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352329464583931, 6.753009809414665],
+                            [125.353223073451204, 6.753020128126884],
+                            [125.353219609850925, 6.752920380566221],
+                            [125.352807441419912, 6.752920380566221],
+                            [125.352807441419912, 6.752824072557106],
+                            [125.353205755449892, 6.752813753840707],
+                            [125.353202291849627, 6.752714006237502],
+                            [125.352312146582605, 6.752700247945792],
+                            [125.352315610182885, 6.752806874696319],
+                            [125.352700069811831, 6.752827512129191],
+                            [125.352689679011036, 6.752916940994798],
+                            [125.352332928184168, 6.752930699280347],
+                            [125.352322537383401, 6.752930699280347],
+                            [125.352329464583931, 6.753009809414665]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352301755781852, 6.752590181598022],
+                            [125.352672361009738, 6.752597060745493],
+                            [125.35266197020897, 6.752483554799749],
+                            [125.352305219382089, 6.752490433948732],
+                            [125.352301755781852, 6.752590181598022]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.3528143686204, 6.752600500319189],
+                            [125.353178046647798, 6.752597060745493],
+                            [125.353178046647798, 6.752459477777531],
+                            [125.352817832220694, 6.752490433948732],
+                            [125.3528143686204, 6.752600500319189]
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+};
+
+        // Load GeoJSON route
+        var geojsonRoute = L.geoJSON(yourGeoJsonData).addTo(map); // Use the defined GeoJSON data
+
+        // Create a routing control
+        routeControl = L.Routing.control({
+            waypoints: [],
+            routeWhileDragging: true,
+            createMarker: function() { return null; } // Disable markers
+        }).addTo(map);
+
+        // Function to initialize routing
+        function initializeRoute(lat, lng, destination) {
+            var userStartLocation = L.latLng(lat, lng);
+            var waypoints = [
+                userStartLocation,
+                L.latLng(destination[0], destination[1])
+            ];
+
+            // Set waypoints for the routing control
+            routeControl.setWaypoints(waypoints);
+        }
+
+        // Add event listener for the route button
+        document.getElementById('routeToSelected').addEventListener('click', function() {
+            var selectedLocation = document.getElementById('locationSelect').value;
+            if (selectedLocation && locations[selectedLocation]) {
+                var destination = locations[selectedLocation];
+                if (userLocation) {
+                    initializeRoute(userLocation.latitude, userLocation.longitude, destination);
+                } else {
+                    alert("User  location not found. Please enable location services.");
+                }
+            } else {
+                alert("Please select a valid location.");
+            }
+        });
+
+        // Function to get user location
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(function (position) {
+                userLocation = position.coords;
+
+                var lat = userLocation.latitude;
+                var lng = userLocation.longitude;
+
+                // Update map center to user's location
+                map.setView([lat, lng], 16);
+
+                // Update or create the user's location marker
+                if (!userMarker) {
+                    userMarker = L.marker([lat, lng]).addTo(map);
+                } else {
+                    userMarker.setLatLng([lat, lng]);  // Update position
+                }
+
+                // Update the route to include the new user position if a route is active
+                if (routeControl) {
+                    routeControl.spliceWaypoints(0, 1, [lat, lng]);  // Update start point with live location
+                }
+
+                console.log('User  Position:', lat, lng);
+            }, function (error) {
+                console.log('Error getting location:', error);
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 10000,
+                timeout: 10000
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+
+        map.locate({ setView: true, maxZoom: 19 });
+
+        map.on('locationfound', function(e) {
+            // Add a marker for user's location
+            L.marker(e.latlng).addTo(map)
+                .bindPopup("You are here")
+                .openPopup();
+        });
+    </script>
+</body>
+</html>
