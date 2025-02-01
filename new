@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Routing Example with GeoTIFF</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@turf/turf"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        #map {
+            height: 100%;
+            width: 100%;
+        }
+
+        #controls {
+            position: absolute;
+            top: 50px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            width: 300px;
+        }
+
+        #locationBox {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        #locationBox h3 {
+            margin-top: 0;
+        }
+
+        #controls select,
+        #controls button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+
+        #controls button {
+            background-color: #FF0000;
+            color: white;
+            cursor: pointer;
+        }
+
+        #controls button:hover {
+            background-color: #a50808;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <div id="locationBox">
+            <h3>Select a Predefined Location</h3>
+            <select id="locationSelect">
+                <option value="">-- Select a Location --</option>
+                <option value="Raymond rooms" disabled>Raymond</option>
+                <option value="R101">R101</option>
+                <option value="R102">R102</option>
+                <option value="R103">R103</option>
+            
+            </select>
+            <button id="routeToSelected">Route to Selected Location</button>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+    <script src="https://unpkg.com/leaflet-geotiff@1.0.0/dist/leaflet-geotiff.min.js"></script>
+
+    <script>
+        var map = L.map('map').setView([6.751977, 125.353731], 18); // Default view
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        var userLocation;
+        var userMarker;
+
+        const locations = {
+            R101: [6.596518, 125.344981],
+            R102: [6.751635, 125.353540],
+            R103: [6.759306, 125.346363],
+        
+        };
+        var geojsonRoute = {
+    "type": "FeatureCollection",
+    "name": "router",
+    "crs": {
+        "type": "name",
+        "properties": {
+            "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+        }
+    },
+    "features": [{
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352331196384185, 6.75292553992331],
+                        [125.35323173245196, 6.75292553992331],
+                        [125.353224805251443, 6.752695088586299],
+                        [125.352306951182328, 6.752667572001412],
+                        [125.352310414782607, 6.752932419066015]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352306951182328, 6.75283267148727],
+                        [125.35323173245196, 6.752836111059294]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352750292015727, 6.752918660780514],
+                        [125.352760682816523, 6.752836111059294]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.35392791610434, 6.753083760180703],
+                        [125.353339104060055, 6.753073441469842],
+                        [125.353297540856929, 6.752949616922338],
+                        [125.353221341651164, 6.752932419066015]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353245586853021, 6.752825792343152],
+                        [125.35343954846762, 6.752842990203265],
+                        [125.353449939268387, 6.752973693920167],
+                        [125.353920988903852, 6.752970254349123],
+                        [125.353910598103084, 6.752103481666381],
+                        [125.353837862497571, 6.7519143048824],
+                        [125.353848253298366, 6.751594423970342],
+                        [125.353359885661618, 6.7515806656468]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353443012067871, 6.752846429775216],
+                        [125.353446475668136, 6.752433680966684],
+                        [125.353789372093942, 6.752461197564872],
+                        [125.353782444893426, 6.752966814778054]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353449939268387, 6.752794836193402],
+                        [125.353789372093942, 6.752791396621086]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353446475668136, 6.752316735406926],
+                        [125.353588483278799, 6.752309856255474],
+                        [125.353588483278799, 6.752447439265974],
+                        [125.353591946879078, 6.752103481666381],
+                        [125.35390367090254, 6.75210004208915]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353789372093942, 6.752468076714175],
+                        [125.353789372093942, 6.752261702192556],
+                        [125.353920988903852, 6.752258262616451]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353574628877794, 6.752113800397927],
+                        [125.353432621267103, 6.752113800397927],
+                        [125.35343954846762, 6.752468076714175]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353432621267103, 6.752117239975059],
+                        [125.353429157666824, 6.751986536026829],
+                        [125.353328713259245, 6.751989975604867],
+                        [125.353346031260557, 6.751573786484885]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353346031260557, 6.7515806656468],
+                        [125.353349494860822, 6.751529071930038],
+                        [125.3532732956551, 6.751522192767391],
+                        [125.3532732956551, 6.751250465764493],
+                        [125.352351977985748, 6.7512470261812],
+                        [125.352379686787842, 6.751474038626098],
+                        [125.353165924047019, 6.751463719880913],
+                        [125.353155533246252, 6.751701050964519],
+                        [125.352383150388093, 6.751676973903369],
+                        [125.352379686787842, 6.751814557093797],
+                        [125.352189188773494, 6.751793919617728],
+                        [125.352192652373731, 6.75138460949385],
+                        [125.352220361175839, 6.751329576173483],
+                        [125.352355441586013, 6.751312378259585],
+                        [125.352324269183669, 6.751057849062446],
+                        [125.352331196384185, 6.751006255289952],
+                        [125.352836882022217, 6.750978738609042],
+                        [125.352864590824325, 6.751006255289952],
+                        [125.352850736423292, 6.751243586597881]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352338123584701, 6.751222949097462],
+                        [125.351908637152377, 6.751240147014539],
+                        [125.351908637152377, 6.751240147014539],
+                        [125.351891319151065, 6.750583186148068],
+                        [125.352244606377667, 6.750538471501709],
+                        [125.352272315179732, 6.751315817842412]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352268851579495, 6.750940903170234],
+                        [125.352829954821729, 6.750920265656909],
+                        [125.352836882022217, 6.750765484278936],
+                        [125.352448958793033, 6.750772363452342],
+                        [125.352462813194066, 6.750927144828116],
+                        [125.352435104391986, 6.75052815273658]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352445495192782, 6.75065197790363],
+                        [125.352836882022217, 6.750624461202579],
+                        [125.352829954821729, 6.75051439438273]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352854200023557, 6.75061414243928],
+                        [125.35325597765376, 6.750593504912025]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353269832054849, 6.751257344931003],
+                        [125.35326636845457, 6.751078486569902],
+                        [125.353062016039189, 6.751095684492112],
+                        [125.353068943239705, 6.751040651138892],
+                        [125.352961571631624, 6.750947782341146],
+                        [125.352951180830814, 6.75076892386565],
+                        [125.353062016039189, 6.750631340377988],
+                        [125.353068943239705, 6.750610702851466]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353976406508025, 6.7529977709168],
+                        [125.353301004457194, 6.752980573062185],
+                        [125.353318322458449, 6.751102563660824],
+                        [125.353359885661618, 6.750934023999222],
+                        [125.353373740062651, 6.750689813365023],
+                        [125.353259441254053, 6.750600384087876],
+                        [125.352850736423292, 6.750621021614839],
+                        [125.352854200023557, 6.750968419853296],
+                        [125.352989280433704, 6.751119761582177],
+                        [125.35326636845457, 6.751116321997956]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352300023981812, 6.750975299023816],
+                        [125.352843809222733, 6.750954661511959]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352310414782607, 6.75260222010603],
+                        [125.352757219216244, 6.752591901384901],
+                        [125.35276414641676, 6.752849869347141]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352750292015727, 6.752598780532344],
+                        [125.35320748725016, 6.75261253882694],
+                        [125.35322826885168, 6.752736363460698]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.352303487582091, 6.752677890720928],
+                        [125.352303487582091, 6.752677890720928],
+                        [125.352306951182328, 6.752585022237357]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.35343954846762, 6.752210108548401],
+                        [125.353931379704633, 6.752216987701273]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiLineString",
+                "coordinates": [
+                    [
+                        [125.353328713259245, 6.751463719880913],
+                        [125.353474184470215, 6.751460280299135],
+                        [125.353488038871276, 6.751408686569542],
+                        [125.353882889300991, 6.751419005315902],
+                        [125.353858644099148, 6.751594423970342]
+                    ]
+                ]
+            }
+        }
+    ]
+}
+var routeLayer = L.geoJSON(geojsonRoute).addTo(map);
+        var geojsonData = {
+         "type": "FeatureCollection",
+    "name": "buildings",
+    "crs": {
+        "type": "name",
+        "properties": {
+            "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
+        }
+    },
+    "features": [{
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.35346552546946, 6.752944457565506],
+                            [125.353908866302817, 6.752944457565506],
+                            [125.353898475502021, 6.752122399340711],
+                            [125.353392789863975, 6.752125838917783],
+                            [125.353403180664728, 6.752012332861514],
+                            [125.353347763060597, 6.752012332861514],
+                            [125.353326981459006, 6.752834391273285],
+                            [125.353441280267603, 6.752827512129191],
+                            [125.353441280267603, 6.752456038202831],
+                            [125.353763395091846, 6.752459477777531],
+                            [125.353763395091846, 6.75275184153769],
+                            [125.353468989069697, 6.752758720682861],
+                            [125.35346552546946, 6.752944457565506]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353555579076229, 6.751995134971879],
+                            [125.353649096283263, 6.751984816237802],
+                            [125.353656023483779, 6.751943541299301],
+                            [125.353707977487673, 6.751940101720935],
+                            [125.353701050287157, 6.751857551832785],
+                            [125.353656023483779, 6.751857551832785],
+                            [125.353652559883528, 6.751823156041901],
+                            [125.353541724675182, 6.751823156041901],
+                            [125.353555579076229, 6.75186443099067],
+                            [125.353531333874386, 6.751888508042492],
+                            [125.353527870274149, 6.751926343407221],
+                            [125.353552115475978, 6.751936662142544],
+                            [125.353555579076229, 6.751995134971879]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353389326263695, 6.751706210334611],
+                            [125.353829203496815, 6.751692452014247],
+                            [125.353839594297611, 6.751589264599059],
+                            [125.353392789863975, 6.751592704179921],
+                            [125.353389326263695, 6.751706210334611]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353905402702523, 6.751936662142544],
+                            [125.353998919909586, 6.751940101720935],
+                            [125.354002383509865, 6.751664935372347],
+                            [125.353895011901784, 6.751675254113244],
+                            [125.353905402702523, 6.751936662142544]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353915793503333, 6.751520472976714],
+                            [125.353998919909586, 6.751510154232514],
+                            [125.353988529108818, 6.751200591804355],
+                            [125.353642169082747, 6.751207470971575],
+                            [125.353656023483779, 6.751303779302408],
+                            [125.353898475502021, 6.751314098051002],
+                            [125.353915793503333, 6.751520472976714]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353087993041029, 6.751080206362151],
+                            [125.353223073451204, 6.751080206362151],
+                            [125.353223073451204, 6.751032052176888],
+                            [125.353323517858726, 6.750915106278444],
+                            [125.353323517858726, 6.750770643659001],
+                            [125.353198828249347, 6.750657137284906],
+                            [125.353195364649125, 6.750615862233182],
+                            [125.353077602240262, 6.750626180996444],
+                            [125.35308452944075, 6.750664016459853],
+                            [125.352959839831371, 6.750777522832335],
+                            [125.352959839831371, 6.750777522832335],
+                            [125.352970230632167, 6.750932304206457],
+                            [125.353094920241546, 6.751045810516024],
+                            [125.353087993041029, 6.751080206362151]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353198828249347, 6.751451681344589],
+                            [125.353191901048831, 6.751362252208207],
+                            [125.353233464251957, 6.751362252208207],
+                            [125.353240391452516, 6.75125562513939],
+                            [125.352371027787058, 6.751265943889009],
+                            [125.35238834578837, 6.751448241762724],
+                            [125.353198828249347, 6.751451681344589]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.35302218463606, 6.751682133273719],
+                            [125.353133019844435, 6.751689012434094],
+                            [125.353136483444686, 6.751482637580253],
+                            [125.353015257435544, 6.751486077161871],
+                            [125.35302218463606, 6.751682133273719]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.353136483444686, 6.751805958145543],
+                            [125.35238834578837, 6.751792199828015],
+                            [125.352384882188105, 6.751692452014247],
+                            [125.353139947044951, 6.751706210334611],
+                            [125.353136483444686, 6.751805958145543]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352364100586541, 6.751795639407434],
+                            [125.352364100586541, 6.751795639407434],
+                            [125.352190920573506, 6.751795639407434],
+                            [125.352187456973255, 6.751668374952673],
+                            [125.352239410977162, 6.751668374952673],
+                            [125.352253265378195, 6.75147919799861],
+                            [125.352201311374287, 6.751455120926426],
+                            [125.352211702175083, 6.751365691790681],
+                            [125.352211702175083, 6.751348493878065],
+                            [125.352360636986276, 6.751351933460637],
+                            [125.352364100586541, 6.751795639407434]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352346782585258, 6.751204031387975],
+                            [125.352838613822257, 6.751200591804355],
+                            [125.352842077422522, 6.751001095912403],
+                            [125.352343318984964, 6.751032052176888],
+                            [125.352346782585258, 6.751204031387975]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352471472194622, 6.750908227107066],
+                            [125.352821295820974, 6.750891029178195],
+                            [125.352810905020178, 6.750777522832335],
+                            [125.352457617793576, 6.750791281178703],
+                            [125.352471472194622, 6.750908227107066]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352319073783164, 6.750915106278444],
+                            [125.352443763392543, 6.750901347935591],
+                            [125.352416054590449, 6.750543630884194],
+                            [125.35228443778054, 6.750564268413577],
+                            [125.352319073783164, 6.750915106278444]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352450690593059, 6.750629620584148],
+                            [125.352450690593059, 6.750629620584148],
+                            [125.352817832220694, 6.750612422645381],
+                            [125.352803977819661, 6.750519553765471],
+                            [125.352426445391245, 6.750540191295879],
+                            [125.352450690593059, 6.750629620584148]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352859395423806, 6.750598664293925],
+                            [125.35326810025461, 6.750591785118051],
+                            [125.35326810025461, 6.750505795411378],
+                            [125.35284900462301, 6.750519553765471],
+                            [125.352859395423806, 6.750598664293925]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352173602572194, 6.751296900136555],
+                            [125.351834169746652, 6.751300339719493],
+                            [125.351806460944559, 6.750536751707539],
+                            [125.352173602572194, 6.750512674588474],
+                            [125.35217706617243, 6.750626180996444],
+                            [125.351945004954999, 6.750650258109864],
+                            [125.351969250156827, 6.751169635550649],
+                            [125.352183993372989, 6.75116619596678],
+                            [125.352173602572194, 6.751296900136555]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352329464583931, 6.753009809414665],
+                            [125.353223073451204, 6.753020128126884],
+                            [125.353219609850925, 6.752920380566221],
+                            [125.352807441419912, 6.752920380566221],
+                            [125.352807441419912, 6.752824072557106],
+                            [125.353205755449892, 6.752813753840707],
+                            [125.353202291849627, 6.752714006237502],
+                            [125.352312146582605, 6.752700247945792],
+                            [125.352315610182885, 6.752806874696319],
+                            [125.352700069811831, 6.752827512129191],
+                            [125.352689679011036, 6.752916940994798],
+                            [125.352332928184168, 6.752930699280347],
+                            [125.352322537383401, 6.752930699280347],
+                            [125.352329464583931, 6.753009809414665]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.352301755781852, 6.752590181598022],
+                            [125.352672361009738, 6.752597060745493],
+                            [125.35266197020897, 6.752483554799749],
+                            [125.352305219382089, 6.752490433948732],
+                            [125.352301755781852, 6.752590181598022]
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "properties": {
+                "id": null
+            },
+            "geometry": {
+                "type": "MultiPolygon",
+                "coordinates": [
+                    [
+                        [
+                            [125.3528143686204, 6.752600500319189],
+                            [125.353178046647798, 6.752597060745493],
+                            [125.353178046647798, 6.752459477777531],
+                            [125.352817832220694, 6.752490433948732],
+                            [125.3528143686204, 6.752600500319189]
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}
+
+L.geoJSON(geojsonData).addTo(map);
+L.geoJSON(geojsonData, {
+    style: function (feature) {
+      return {
+        color: 'blue',
+        weight: 5,
+        opacity: 0.7,
+        fillColor: 'red',
+        fillOpacity: 0.5
+      };
+    }
+  }).addTo(map);
+        // Function to get user location
+        function startTracking() {
+        if (navigator.geolocation) {
+            navigator.geolocation.watchPosition(function (position) {
+                userLocation = position.coords;
+
+                var lat = userLocation.latitude;
+                var lng = userLocation.longitude;
+
+                // Update map center to user's location
+                map.setView([lat, lng]);
+
+                // Update or create the user's location marker
+                if (!userMarker) {
+                    userMarker = L.marker([lat, lng]).addTo(map);
+                } else {
+                    userMarker.setLatLng([lat, lng]);  // Update position
+                }
+
+                // Update the route to include the new user position if a route is active
+                if (routeControl) {
+                    routeControl.spliceWaypoints(0, 1, [lat, lng]);  // Update start point with live location
+                }
+
+                // Optionally, show the user’s current position
+                console.log('User Position:', lat, lng);
+            }, function (error) {
+                console.log('Error getting location:', error);
+            }, {
+                enableHighAccuracy: true,
+                maximumAge: 10000,
+                timeout: 10000
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    }
+
+    // Call the function to start tracking
+    startTracking();
+
+        // Event listener for routing to the selected location
+        document.getElementById('routeToSelected').addEventListener('click', function () {
+            var selectedLocation = document.getElementById('locationSelect').value;
+
+            if (selectedLocation && locations[selectedLocation]) {
+                if (Array.isArray(locations[selectedLocation][0])) {
+                    createCustomRoute(locations[selectedLocation]);
+                } else {
+                    createRoute(locations[selectedLocation]);
+                }
+            } else {
+                alert("Please select a valid location.");
+            }
+        });
+
+    // Initialize routing control
+    function initializeRoute(lat, lng) {
+        // Set the user's location as the starting point
+        var userStartLocation = L.latLng(lat, lng);
+
+        // Create the route control
+        routeControl = L.Routing.control({
+            waypoints: [userStartLocation, L.latLng(40.7140, -74.0040)],  // Set a destination (replace with campus destination)
+            routeWhileDragging: true
+        }).addTo(map);
+    }
+    
+    // Update the route whenever the user’s position changes
+    function updateRoute(lat, lng) {
+        if (routeControl) {
+            routeControl.spliceWaypoints(0, 1, L.latLng(lat, lng));  // Update the start waypoint dynamically
+        }
+    }
+
+
+
+    // Initialize the route with the user's current location once it's available
+    function onLocationReceived(lat, lng) {
+        initializeRoute(lat, lng);
+    }
+
+        // Function to create a route to a destination
+        function createRoute(destinationCoords) {
+            if (!userLocation) {
+                alert("User location not available.");
+                return;
+            }
+
+            var routingControl = L.Routing.control({
+                waypoints: [
+                    L.latLng(userLocation[0], userLocation[1]),
+                    L.latLng(destinationCoords[0], destinationCoords[1])
+                ],
+                routeWhileDragging: true,
+                draggableWaypoints: false,
+                addWaypoints: false
+            });
+
+            if (window.routingControl) {
+                map.removeControl(window.routingControl);
+            }
+
+            window.routingControl = routingControl.addTo(map);
+        }
+
+        // Function to create a custom route
+        function createCustomRoute(routeCoordinates) {
+            if (!userLocation) {
+                alert("User location not available.");
+                return;
+            }
+
+            var waypoints = [L.latLng(userLocation[0], userLocation[1])];
+
+            routeCoordinates.forEach(coord => {
+                waypoints.push(L.latLng(coord[0], coord[1]));
+            });
+
+            var routingControl = L.Routing.control({
+                waypoints: waypoints,
+                routeWhileDragging: true,
+                draggableWaypoints: false,
+                addWaypoints: false
+            });
+
+            if (window.routingControl) {
+                map.removeControl(window.routingControl);
+            }
+
+            window.routingControl = routingControl.addTo(map);
+        }
+
+        getUserLocation();  // Call to set the initial location
+    </script>
+</body>
+</html>
